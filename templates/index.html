@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Predicción de Resistencia del Concreto</title>
+<style>
+  :root {
+    --concrete-50:  #f4f3f1;
+    --concrete-100: #e6e3de;
+    --concrete-300: #b9b3a8;
+    --concrete-700: #58524a;
+    --concrete-900: #2b2722;
+    --rebar-500:    #b5532a;
+    --rebar-600:    #9c4521;
+    --ok-600:       #3d6b4f;
+    --error-600:    #a3372f;
+    --mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+    --sans: 'IBM Plex Sans', -apple-system, Segoe UI, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--concrete-50);
+    background-image:
+      radial-gradient(circle at 1px 1px, var(--concrete-100) 1px, transparent 0);
+    background-size: 22px 22px;
+    color: var(--concrete-900);
+    font-family: var(--sans);
+    min-height: 100vh;
+    padding: 2.5rem 1.25rem 4rem;
+  }
+
+  .wrap { max-width: 760px; margin: 0 auto; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--rebar-600);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 10px; height: 10px;
+    background: var(--rebar-500);
+    display: inline-block;
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  }
+
+  h1 {
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    line-height: 1.05;
+    margin: 0.6rem 0 0.4rem;
+    letter-spacing: -0.01em;
+  }
+  h1 em {
+    font-style: normal;
+    color: var(--rebar-600);
+  }
+
+  .lede {
+    color: var(--concrete-700);
+    font-size: 1.02rem;
+    max-width: 56ch;
+    margin: 0 0 2rem;
+  }
+
+  .panel {
+    background: #fff;
+    border: 1px solid var(--concrete-100);
+    border-radius: 14px;
+    box-shadow: 0 1px 2px rgba(43,39,34,0.04), 0 12px 28px -16px rgba(43,39,34,0.12);
+    overflow: hidden;
+  }
+
+  .panel-head {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--concrete-100);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+  }
+  .panel-head h2 {
+    font-size: 1rem;
+    margin: 0;
+    font-weight: 600;
+  }
+  .panel-head .tag {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--concrete-700);
+    white-space: nowrap;
+  }
+
+  form { padding: 1.5rem; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.1rem 1.4rem;
+  }
+  @media (max-width: 540px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+
+  .field label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+  }
+  .field .unit {
+    font-family: var(--mono);
+    color: var(--concrete-700);
+    font-weight: 400;
+    font-size: 0.74rem;
+  }
+  .field .hint {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--concrete-300);
+    margin-top: 0.28rem;
+  }
+
+  input[type="number"] {
+    width: 100%;
+    padding: 0.62rem 0.7rem;
+    border: 1.5px solid var(--concrete-100);
+    border-radius: 8px;
+    font-family: var(--mono);
+    font-size: 0.92rem;
+    background: var(--concrete-50);
+    color: var(--concrete-900);
+    transition: border-color 0.15s, background 0.15s;
+  }
+  input[type="number"]:focus {
+    outline: none;
+    border-color: var(--rebar-500);
+    background: #fff;
+  }
+  input[type="number"]:focus-visible {
+    outline: 2px solid var(--rebar-500);
+    outline-offset: 1px;
+  }
+
+  .actions {
+    margin-top: 1.6rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  button.submit {
+    background: var(--concrete-900);
+    color: #fff;
+    border: none;
+    padding: 0.78rem 1.5rem;
+    border-radius: 9px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+  }
+  button.submit:hover { background: var(--rebar-600); }
+  button.submit:active { transform: translateY(1px); }
+  button.submit:focus-visible { outline: 2px solid var(--rebar-500); outline-offset: 2px; }
+
+  .actions .note {
+    font-size: 0.78rem;
+    color: var(--concrete-700);
+  }
+
+  .result {
+    margin: 0 1.5rem 1.5rem;
+    padding: 1.4rem 1.5rem;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #f3ede7, #f8f5f1);
+    border: 1px solid #e6d9cb;
+    display: flex;
+    align-items: baseline;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+  }
+  .result .value {
+    font-family: var(--mono);
+    font-size: 2.4rem;
+    font-weight: 700;
+    color: var(--rebar-600);
+    letter-spacing: -0.02em;
+  }
+  .result .value sup {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--concrete-700);
+    margin-left: 0.3rem;
+  }
+  .result .desc {
+    font-size: 0.85rem;
+    color: var(--concrete-700);
+    max-width: 38ch;
+  }
+
+  .errors {
+    margin: 0 1.5rem 0;
+    margin-top: 1.5rem;
+    padding: 1rem 1.2rem;
+    border-radius: 10px;
+    background: #fbeceb;
+    border: 1px solid #f1c9c5;
+    color: var(--error-600);
+    font-size: 0.86rem;
+  }
+  .errors ul { margin: 0.3rem 0 0; padding-left: 1.1rem; }
+
+  footer {
+    margin-top: 2rem;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--concrete-300);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">Laboratorio de materiales · modelo predictivo</div>
+  <h1>¿Qué resistencia tendrá tu <em>mezcla</em> de concreto?</h1>
+  <p class="lede">
+    Ingresa las proporciones de tus 8 componentes y la edad de curado.
+    Un modelo de regresión (Random Forest) entrenado con 1,005 mezclas de
+    laboratorio estima la resistencia a la compresión antes de fabricar la
+    mezcla físicamente.
+  </p>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Datos de la mezcla</h2>
+      <span class="tag">8 variables · kg/m³ y días</span>
+    </div>
+
+    {% if errores %}
+    <div class="errors">
+      <strong>No se pudo generar la predicción:</strong>
+      <ul>
+        {% for e in errores %}<li>{{ e }}</li>{% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    {% if resultado is not none %}
+    <div class="result">
+      <div class="value">{{ resultado }}<sup>MPa</sup></div>
+      <div class="desc">
+        Resistencia a la compresión estimada para esta mezcla, a la edad de curado indicada.
+      </div>
+    </div>
+    {% endif %}
+
+    <form method="POST" action="/predecir">
+      <div class="grid">
+        {% for campo in campos %}
+        <div class="field">
+          <label for="{{ campo.nombre }}">
+            {{ campo.etiqueta }} <span class="unit">({{ campo.unidad }})</span>
+          </label>
+          <input
+            type="number"
+            step="any"
+            min="0"
+            id="{{ campo.nombre }}"
+            name="{{ campo.nombre }}"
+            placeholder="ej. {{ (campo.min + campo.max) // 2 }}"
+            value="{{ valores_previos[campo.nombre] if valores_previos else '' }}"
+            required
+          >
+          <div class="hint">rango típico: {{ campo.min }}–{{ campo.max }} {{ campo.unidad }}</div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="submit">Calcular resistencia</button>
+        <span class="note">El modelo nunca devuelve un valor negativo.</span>
+      </div>
+    </form>
+  </div>
+
+  <footer>concrete-strength-predictor · Proyecto CRISP-DM · RandomForestRegressor</footer>
+</div>
+</body>
+</html>
